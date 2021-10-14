@@ -22,6 +22,7 @@
     <ClCompile Include="disassembler.cpp" />
     <ClCompile Include="Emulator.cpp" />
     <ClCompile Include="Emulator_CPU.cpp" />
+    <ClCompile Include="Emulator_GPU.cpp" />
     <ClCompile Include="Emulator_Wrapper.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />

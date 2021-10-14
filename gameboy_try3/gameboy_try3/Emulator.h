@@ -14,7 +14,6 @@ typedef uint8_t u8;
 #define LIGHT ((255 << 24)  | (168 << 16)  | (185 << 8)   | 90 )
 #define DARK  ((255 << 24)  | (110 << 16)  | (96  << 8)   | 30 )
 #define BLACK ((255 << 24)  | (0   << 16)  | (27  << 8)   | 45 )
-#define NUMBER_OF_ERAM_BANKS 4
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #define max(a,b) ((a) > (b) ? (a) : (b))
 template <typename t> static t get_bit  (t data, int bit) { return (data >> bit) & 1; }
@@ -23,6 +22,7 @@ template <typename t> static t reset_bit(t data, int bit) { return data & ~(1 <<
 typedef int pixels[8][8]; // 64 pixels to represent one "tile"
 typedef uint32_t row[256]; // one row of 256 pixels 
 enum class GPU_STATE { SCANLINE_OAM = 2, SCANLINE_VRAM = 3, HBLANK = 0, VBLANK = 1 };
+enum class EMULATOR_OUTPUT { NOTHING, VBLANK, BREAKPOINT };
 class oam_entry
 {
 public:
@@ -89,7 +89,7 @@ public:
     u8 next_byte();
     uint16_t next_word(bool LSB_first = true);
     void LD_r_Im(int reg);
-    void LD_r1_r2(int reg1, int reg2);
+    void LD_r_r(int reg1, int reg2);
     void LD_r_pair(int reg, int pair, bool decHL = false, bool incHL = false);
     void LD_pair_r(int pair, int reg, bool decHL = false, bool incHL = false);
     void LD_HL_Im();
@@ -102,13 +102,28 @@ public:
     void LD_nn_SP();
     void PUSH(int pair);
     void POP(int pair);
-    void ADD(int reg, int mode, int ADC = 0);
-    void SUB(int reg, int mode, bool SBC = false, bool CP = false);
-    void AND(int reg, int mode);
-    void OR(int reg, int mode);
-    void XOR(int reg, int mode);
-    void INC(int reg, bool HL = false);
-    void DEC(int reg, bool HL = false);
+    void OR_r(int reg);
+    void OR_im();
+    void OR_HL();
+    void XOR_r(int reg);
+    void XOR_im();
+    void XOR_HL();
+    void AND_r(int reg);
+    void AND_im();
+    void AND_HL();
+    void ADD_r(int reg, bool ADC = false);
+    void ADD_im(bool ADC = false);
+    void ADD_HL(bool ADC = false);
+    void CP_r(int reg);
+    void CP_im();
+    void CP_HL();
+    void SUB_r(int reg, bool SBC = false);
+    void SUB_im(bool SBC = false);
+    void SUB_HL(bool SBC = false);
+    void INC_r(int reg);
+    void INC_HL();
+    void DEC_r(int reg);
+    void DEC_HL();
     void ADD_HL(int reg);
     void ADD_SP();
     void INC_16(int reg);
@@ -130,7 +145,8 @@ public:
     void JR(bool condition);
     void CALL(bool condition);
     void RST(uint16_t addr);
-    void RET(bool condition);
+    void RET();
+    void RET_cc(bool condition);
     void RETI();
     u8 execute_opcode();
     void cb_SWAP(int reg, bool HL = false);
@@ -147,71 +163,54 @@ public:
     void execute_extended_opcode();
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - E N D    C P U    Z O N E 
 #pragma endregion
-    // bios 
-    u8 _bios[256] = { 0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
-    0x11, 0x3E, 0x80, 0x32, 0xE2, 0x0C, 0x3E, 0xF3, 0xE2, 0x32, 0x3E, 0x77, 0x77, 0x3E, 0xFC, 0xE0,
-    0x47, 0x11, 0x04, 0x01, 0x21, 0x10, 0x80, 0x1A, 0xCD, 0x95, 0x00, 0xCD, 0x96, 0x00, 0x13, 0x7B,
-    0xFE, 0x34, 0x20, 0xF3, 0x11, 0xD8, 0x00, 0x06, 0x08, 0x1A, 0x13, 0x22, 0x23, 0x05, 0x20, 0xF9,
-    0x3E, 0x19, 0xEA, 0x10, 0x99, 0x21, 0x2F, 0x99, 0x0E, 0x0C, 0x3D, 0x28, 0x08, 0x32, 0x0D, 0x20,
-    0xF9, 0x2E, 0x0F, 0x18, 0xF3, 0x67, 0x3E, 0x64, 0x57, 0xE0, 0x42, 0x3E, 0x91, 0xE0, 0x40, 0x04,
-    0x1E, 0x02, 0x0E, 0x0C, 0xF0, 0x44, 0xFE, 0x90, 0x20, 0xFA, 0x0D, 0x20, 0xF7, 0x1D, 0x20, 0xF2,
-    0x0E, 0x13, 0x24, 0x7C, 0x1E, 0x83, 0xFE, 0x62, 0x28, 0x06, 0x1E, 0xC1, 0xFE, 0x64, 0x20, 0x06,
-    0x7B, 0xE2, 0x0C, 0x3E, 0x87, 0xF2, 0xF0, 0x42, 0x90, 0xE0, 0x42, 0x15, 0x20, 0xD2, 0x05, 0x20,
-    0x4F, 0x16, 0x20, 0x18, 0xCB, 0x4F, 0x06, 0x04, 0xC5, 0xCB, 0x11, 0x17, 0xC1, 0xCB, 0x11, 0x17,
-    0x05, 0x20, 0xF5, 0x22, 0x23, 0x22, 0x23, 0xC9, 0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B,
-    0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D, 0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E,
-    0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99, 0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC,
-    0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E, 0x3c, 0x42, 0xB9, 0xA5, 0xB9, 0xA5, 0x42, 0x4C,
-    0x21, 0x04, 0x01, 0x11, 0xA8, 0x00, 0x1A, 0x13, 0xBE, 0x20, 0xFE, 0x23, 0x7D, 0xFE, 0x34, 0x20,
-    0xF5, 0x06, 0x19, 0x78, 0x86, 0x23, 0x05, 0x20, 0xFB, 0x86, 0x20, 0xFE, 0x3E, 0x01, 0xE0, 0x50 };
-
-
     // memory map 
-    u8* mem_cart = new u8[0x200000];    // contains the contents of the ROM file 
-    u8* mem_vram = new u8[0x2000];      // 8 KiB : 8000 - 9FFF
-    u8* mem_eram[NUMBER_OF_ERAM_BANKS]; // 8 KiB : A000 - BFFF external ram, changes by bank # for diff MBC 
-    u8* mem_wram = new u8[0x2000];      // 8 KiB : C000 - DFFF 
-    u8* mem_oam  = new u8[160];         // 160 b : FE00 - FE9F 
-    u8* mem_hram = new u8[128];;        // 127 b : FF00 - FFFF
-    u8 system_rom_bank_number  = 1;
-    u8 system_eram_bank_number = 0;
-    bool m_EnableRamBank = false;
-    bool m_enableRTC = false;
-    bool m_ram_is_now_RTC = false;
-    bool m_UsingMemoryModel16_8 = false;
+    u8*  mem_cart                    = new u8[0x200000];    // contains the contents of the ROM file 
+    u8*  mem_vram                    = new u8[0x2000];      // 8 KiB : 8000 - 9FFF
+    u8** mem_eram;                                          // 8 KiB : A000 - BFFF external ram, changes by bank # for diff MBC 
+    u8*  mem_wram                    = new u8[0x2000];      // 8 KiB : C000 - DFFF 
+    u8*  mem_oam                     = new u8[160];         // 160 b : FE00 - FE9F 
+    u8*  mem_hram                    = new u8[128];;        // 127 b : FF00 - FFFF
+    u8              system_rom_bank_number      = 1;
+    u8              system_eram_bank_number     = 0;
+    u8              system_total_rom_banks      = 0;
+    u8              system_total_eram_banks     = 0;
 
-    FILE* fp;
-    u16 m_RetraceLY = 456;
-    int m_TimerCounter = 0;
-    bool m_UsingMBC1 = false;
-    bool m_UsingMBC2 = false;
-    bool m_UsingMBC3 = false;
-
-
+    // general 
     Emulator(const char*);
     void run_step();
     void run_frame();
-    void run_log();
-    void key_pressed(int);
-    void key_released(int);
     void update_gpu(int);
     void update_interrupts();
     void update_timers(int);
+    void key_pressed(int);
+    void key_released(int);
+    void timer_set_clock_freq();
     void wb(uint16_t, u8);
-    u8 rb(uint16_t);
+    u8   rb(uint16_t);
+    u8              system_which_MBC            = 0;
+    u8              system_input_keys           = 0xFF; // 0 = right; 1 = left; 2 = up; 3 = down; 4 = a; 5 = b; 6 = sel; 7 = start 
+    bool            system_enable_ram_banking   = false;
+    bool            system_enable_RTC           = false;
+    bool            system_ram_is_now_RTC       = false;
+    bool            system_UsingMemoryModel16_8 = false;
+    bool            system_master_interrupt_en  = true;
+    int             system_divider_counter      = 0;
+    int             system_timer_counter        = 0;
+    int             system_gpu_counter          = 0; // timer between GPU states 
+    int             system_cycles               = 0;
+    EMULATOR_OUTPUT system_step_output          = EMULATOR_OUTPUT::NOTHING;
 
-
+    FILE* fp;
+    //u16 m_RetraceLY = 456;
     std::vector<u16> debug_mem_breakpoints_w = std::vector<u16>();
     std::vector<u16> debug_mem_breakpoints_r = std::vector<u16>();
-    bool debug_stop_running = false;
-    void SetClockFreq();
-    int m_DividerVariable;
 
 
-    int  system_cycles              = 0;
-    bool system_is_stopped          = false;
-    bool system_master_interrupt_en = false;
-    u8   system_input_keys          = 0xFF; // 0 = right; 1 = left; 2 = up; 3 = down; 4 = a; 5 = b; 6 = sel; 7 = start 
+    
+
+
+
+    // IO registers
     u8 reg_FF00_joypad              = 0xCF;
     u8 reg_FF04_div                 = 0xAB; 
     u8 reg_FF05_tima                = 0x00;
@@ -235,20 +234,19 @@ public:
 
     // gpu
     GPU_STATE  gpu_state;
-    int        gpu_mini_timer   = 0; // timer between GPU states 
     oam_entry* gpu_oam_entries  = new oam_entry[40];
-    pixels*    gpu_tileset      = new pixels[384]; // list of 1024 "tiles" where each tile is an int[8][8] 
+    pixels*    gpu_tileset      = new pixels[384]; // list of 384 "tiles" where each tile is an int[8][8] 
     row*       gpu_background   = new row[256]; // each pixel is a color, 0 = White, 1 = Light, 2 = Dark, 3 = Black
     uint32_t*  gpu_tileset_view = new uint32_t[384 * 8 * 8]; // display the tile set 
     uint32_t*  gpu_screen_data  = new uint32_t[144 * 160];
-    uint32_t system_bg_palette[4];
-    uint32_t system_obj0_palette[4];
-    uint32_t system_obj1_palette[4];
-    
+    uint32_t   gpu_bg_palette[4];
+    uint32_t   gpu_obj0_palette[4];
+    uint32_t   gpu_obj1_palette[4];
     void gpu_render_scanline();
-    void gpu_generate_tileset_view();
-    void gpu_update_tileset_from_addr(uint16_t addr);
-    void gpu_construct_oam_entries();
     void gpu_update_oam_entries(uint16_t addr, u8 data);
-    void gpu_generate_background(bool first);
+    void gpu_update_tileset_from_addr(uint16_t addr);
+    void gpu_generate_oam_entries();
+    void gpu_generate_tileset_view();
+    void gpu_generate_background();
+    void gpu_generate_background_sprites();
 };

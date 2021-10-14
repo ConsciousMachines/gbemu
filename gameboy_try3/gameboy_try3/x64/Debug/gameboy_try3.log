@@ -1,0 +1,3 @@
+﻿  Emulator_GPU.cpp
+C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_GPU.cpp(236,36): warning C4553: '==': result of expression not used; did you intend '='?
+  gameboy_try3.vcxproj -> C:\Users\pwnag\source\repos\gameboy_try3\x64\Debug\gameboy_try3.exe

@@ -214,16 +214,15 @@ Emulator_Wrapper::Emulator_Wrapper() : VBO(0), VAO(0), EBO(0), window(0), emu(0)
     ImFont* fontC = AddDefaultFont(16);
 #pragma endregion
 
-
-    
     /*
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\cpu_instrs.gb");
+    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Tetris (World) (Rev 1).gb");
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\instr_timing.gb");
     */
-
-    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Tetris (World) (Rev 1).gb");
-    /*
+    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Pokemon Blue.gb");
     
+
+    /*
     for (int i = 0; i < 20000; i++)
     {
         //if (i > 300000)
@@ -260,20 +259,16 @@ Emulator_Wrapper::Emulator_Wrapper() : VBO(0), VAO(0), EBO(0), window(0), emu(0)
     */
 
 
-    /*
-    */
-
-
     for (;;)
     {
 
-        if (emu->debug_stop_running) // catch the breakpoint and make it external so we can run again 
-        {
-            emu->debug_stop_running = false;
-            emulator_on = false;
-        }
         if (emulator_on) emu->run_frame();
         if (emulator_stepping) emu->run_step();
+        if (emu->system_step_output == EMULATOR_OUTPUT::BREAKPOINT) // catch the breakpoint and make it external so we can run again 
+        {
+            emu->system_step_output = EMULATOR_OUTPUT::NOTHING;
+            emulator_on = false;
+        }
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
@@ -466,19 +461,9 @@ void Emulator_Wrapper::render_imgui_vram_viewer()
         {
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("BG map 0"))
+        if (ImGui::BeginTabItem("BG map"))
         {
-            emu->gpu_generate_background(0);
-            glBindTexture(GL_TEXTURE_2D, texture[1]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, emu->gpu_background);
-
-            ImVec2 size = ImVec2(256 * 2, 256 * 2);
-            ImGui::Image((ImTextureID)texture[1], size);
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("BG map 1"))
-        {
-            emu->gpu_generate_background(1);
+            emu->gpu_generate_background();
             glBindTexture(GL_TEXTURE_2D, texture[1]);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, emu->gpu_background);
 
