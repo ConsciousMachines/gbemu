@@ -201,32 +201,33 @@ void Emulator::gpu_generate_background() // which of 2 bg maps are we using?
 
 void Emulator::update_gpu(int _cyc) // returns true if it is time to vblank
 {
+    static int gpu_counter = 0;
     // this is basically a state machine that changes state after certain # of cycles passes
     // in the end we only care about writing the entire scanline during HBLANK
-    system_gpu_counter += _cyc; // run GPU for this many cycles
+    gpu_counter += _cyc; // run GPU for this many cycles
     switch (gpu_state)
     {
     case GPU_STATE::SCANLINE_OAM: // OAM read mode, scanline active
-        if (system_gpu_counter >= 80) // Enter scanline mode 3
+        if (gpu_counter >= 80) // Enter scanline mode 3
         {
-            system_gpu_counter %= 80;
+            gpu_counter %= 80;
             gpu_state = GPU_STATE::SCANLINE_VRAM;
         }
         break;
 
     case GPU_STATE::SCANLINE_VRAM: // VRAM read mode, scanline active. Treat end of mode 3 as end of scanline
-        if (system_gpu_counter >= 172) // Enter hblank
+        if (gpu_counter >= 172) // Enter hblank
         {
-            system_gpu_counter %= 172;
+            gpu_counter %= 172;
             gpu_state = GPU_STATE::HBLANK;
             gpu_render_scanline(); // Write a scanline to the framebuffer
         }
         break;
 
     case GPU_STATE::HBLANK: // Hblank. After the last hblank, push the screen data to canvas
-        if (system_gpu_counter >= 204)
+        if (gpu_counter >= 204)
         {
-            system_gpu_counter %= 204;
+            gpu_counter %= 204;
             reg_FF44_lineY++;
 
             if (reg_FF44_lineY >= 143) // Enter vblank
@@ -240,9 +241,9 @@ void Emulator::update_gpu(int _cyc) // returns true if it is time to vblank
         break;
 
     case GPU_STATE::VBLANK:
-        if (system_gpu_counter >= 456)
+        if (gpu_counter >= 456)
         {
-            system_gpu_counter %= 456;
+            gpu_counter %= 456;
             reg_FF44_lineY++; // scan line reg
 
             if (reg_FF44_lineY > 153) // Restart scanning modes

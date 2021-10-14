@@ -14,6 +14,7 @@
 // oct 7 - first tile rendering!
 // oct 12 - fixed stupid bug now blargg test shows! 
 // oct 14 - tetris plays and pokeman loads!
+// oct 15 - passed instr_timing thanks to https://www.reddit.com/r/EmuDev/comments/7emvy6/game_boy_blarggs_instruction_timing_test_fails/
 
 // remember to include opengl32.lib in the project, even in 64bit (lol)!!!
 #include "Emulator_Wrapper.h"

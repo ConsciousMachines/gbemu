@@ -28,7 +28,7 @@ void Emulator::update_timers(int _cyc)
         system_timer_counter -= _cyc;
 
         // enough cpu clock cycles have happened to update the timer
-        if (system_timer_counter <= 0)
+        while (system_timer_counter <= 0) // instr can be 24 clocks but counter can be updated each 16 clocks. hence while
         {
             // reset m_TimerTracer to the correct value
             timer_set_clock_freq();
@@ -46,11 +46,12 @@ void Emulator::update_timers(int _cyc)
         }
     }
 
-    // do divider register
-    system_divider_counter += _cyc;
-    if (system_divider_counter > 255)
+    // divider counter
+    static u16 divider_counter = 0;
+    divider_counter += _cyc;
+    while (divider_counter >= 256)
     {
-        system_divider_counter = 0;
+        divider_counter %= 256;
         reg_FF04_div++;
     }
 }
@@ -59,10 +60,10 @@ void Emulator::timer_set_clock_freq()
 {
     switch (reg_FF07_tac & 0b11) // these bits specify speed 
     {
-    case 0: system_timer_counter = 1024; break; // freq 4096
-    case 1: system_timer_counter = 16; break;// freq 262144
-    case 2: system_timer_counter = 64; break;// freq 65536
-    case 3: system_timer_counter = 256; break;// freq 16382
+    case 0: system_timer_counter += 1024; break; // freq 4096
+    case 1: system_timer_counter += 16; break;// freq 262144
+    case 2: system_timer_counter += 64; break;// freq 65536
+    case 3: system_timer_counter += 256; break;// freq 16382
     }
 }
 
@@ -339,7 +340,7 @@ void Emulator::wb(uint16_t addr, u8 data)
                     u8 newfreq = data & 0x3;
                     if (currentfreq != newfreq)
                     {
-                        timer_set_clock_freq();
+                        timer_set_clock_freq(); // is this reset necessary? instr_timing passes without it
                     }
                     return;
                 }

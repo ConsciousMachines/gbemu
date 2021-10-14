@@ -173,7 +173,7 @@ public:
     u8              system_rom_bank_number      = 1;
     u8              system_eram_bank_number     = 0;
     u8              system_total_rom_banks      = 0;
-    u8              system_total_eram_banks     = 0;
+    u8              system_total_eram_banks     = 1;
 
     // general 
     Emulator(const char*);
@@ -194,9 +194,7 @@ public:
     bool            system_ram_is_now_RTC       = false;
     bool            system_UsingMemoryModel16_8 = false;
     bool            system_master_interrupt_en  = true;
-    int             system_divider_counter      = 0;
     int             system_timer_counter        = 0;
-    int             system_gpu_counter          = 0; // timer between GPU states 
     int             system_cycles               = 0;
     EMULATOR_OUTPUT system_step_output          = EMULATOR_OUTPUT::NOTHING;
 
@@ -204,10 +202,6 @@ public:
     //u16 m_RetraceLY = 456;
     std::vector<u16> debug_mem_breakpoints_w = std::vector<u16>();
     std::vector<u16> debug_mem_breakpoints_r = std::vector<u16>();
-
-
-    
-
 
 
     // IO registers

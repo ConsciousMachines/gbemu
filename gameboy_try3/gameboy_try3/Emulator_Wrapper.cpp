@@ -215,11 +215,14 @@ Emulator_Wrapper::Emulator_Wrapper() : VBO(0), VAO(0), EBO(0), window(0), emu(0)
 #pragma endregion
 
     /*
-    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\cpu_instrs.gb");
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Tetris (World) (Rev 1).gb");
-    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\instr_timing.gb");
-    */
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Pokemon Blue.gb");
+
+    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\cpu_instrs.gb");
+    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\01-read_timing.gb");
+    */
+    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\instr_timing.gb");
+    
     
 
     /*
