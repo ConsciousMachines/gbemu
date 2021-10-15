@@ -6,128 +6,96 @@
 
 void Emulator::gpu_render_scanline()
 {
-    u8 y = reg_FF44_lineY + reg_FF42_scroll_Y; // gpu line + scroll Y
-
-    for (u8 pixel = 0; pixel < 160; pixel++)
+    if (reg_FF40_LCD_ctrl & 0x1) // bg, window enabled
     {
-        u8 x = pixel + reg_FF43_scroll_X; // TODO: figure out why using an int breaks everything
-        //int x2 = pixel + reg_FF43_scroll_X;
+        // which tile data are we using?
+        bool using_window = get_bit(reg_FF40_LCD_ctrl, 5) && (reg_FF4A_window_Y <= reg_FF44_lineY);
+        bool unsig = get_bit(reg_FF40_LCD_ctrl, 4);
 
-        // what tile are we in?
-        u16 tile_idx = (y >> 3) * 32 + (x >> 3);
+        // which background mem?
+        u16 tile_map;
+        u8 y;
+        if (using_window)
+        {
+            tile_map = get_bit(reg_FF40_LCD_ctrl, 6) ? 0x1C00 : 0x1800;
+            y = reg_FF44_lineY - reg_FF4A_window_Y;
+        }
+        else
+        {
+            tile_map = get_bit(reg_FF40_LCD_ctrl, 3) ? 0x1C00 : 0x1800;
+            y = reg_FF42_scroll_Y + reg_FF44_lineY;
+        }
 
-        // get the tile reference out of the tile map we are currently in
-        u8 tile_ref = mem_vram[(get_bit(reg_FF40_LCD_ctrl, 3) ? 0x1C00 : 0x1800) + tile_idx];
+        for (u8 pixel = 0; pixel < 160; pixel++)
+        {
+            u8 x = pixel + reg_FF43_scroll_X;// TODO: figure out why using an int breaks everything
 
-        // get the pixel from the tile depending on which tile set we're in
-        int background = gpu_tileset[get_bit(reg_FF40_LCD_ctrl, 4) ? tile_ref : (256 + (int8_t)tile_ref)][y & 0x7][x & 0x7];
+            if (using_window && (pixel >= reg_FF4B_window_X + 7)) x = pixel - reg_FF4B_window_X + 7;
+            
+            // what tile are we in?
+            u16 tile_idx = (y >> 3) * 32 + (x >> 3);
 
-        gpu_screen_data[reg_FF44_lineY * 160 + pixel] = gpu_bg_palette[background];
+            // get the tile reference out of the tile map we are currently in
+            u8 tile_ref = mem_vram[tile_map + tile_idx];
+
+            u16 tile_location = (unsig ? tile_ref * 16 : 0x800 + ((int8_t)tile_ref + 128) * 16) + (y & 0x7) * 2;
+            u8 data1 = mem_vram[tile_location];
+            u8 data2 = mem_vram[tile_location + 1];
+            int bit = 7 - (x & 0x7);
+            int pre_color = (get_bit(data2, bit) << 1) | get_bit(data1, bit);
+            gpu_screen_data[reg_FF44_lineY * 160 + pixel] = gpu_bg_palette[pre_color];
+
+            // get the pixel from the tile depending on which tile set we're in
+            //int background = gpu_tileset[unsig ? tile_ref : (256 + (int8_t)tile_ref)][y & 0x7][x & 0x7];
+            //gpu_screen_data[reg_FF44_lineY * 160 + pixel] = gpu_bg_palette[background];
+        }
     }
 
-    gpu_generate_oam_entries();
+    
+    // are sprites enabled?
+    if (!get_bit(reg_FF40_LCD_ctrl, 1)) return; 
 
-    // my attempt - NO SCROLLING, ONE TILE_SET 
+    bool use8x16 = get_bit(reg_FF40_LCD_ctrl, 2);
+
     for (int i = 0; i < 40; i++)
     {
-        oam_entry sprite = gpu_oam_entries[i];
-     
-        // does the sprite fall on this line?
-        if ((sprite.y_coord > reg_FF44_lineY + 16) || (sprite.y_coord + 7 < reg_FF44_lineY + 16)) continue;
+        u8 y_pos = mem_oam[i * 4 + 0] - 16;
+        u8 x_pos = mem_oam[i * 4 + 1] - 8;
+        u8 tile_ref = mem_oam[i * 4 + 2];
+        u8 attributes = mem_oam[i * 4 + 3];
+        bool flip_y = get_bit(attributes, 6);
+        bool flip_x = get_bit(attributes, 5);
+        int sprite_size = use8x16 ? 16 : 8;
 
-        // which of its rows falls on this line?
-        u8 sprite_row = reg_FF44_lineY + 16 - sprite.y_coord; // since we know this to be 0-7
+        // is it on this row?
+        if ((y_pos > reg_FF44_lineY) || (y_pos + sprite_size <= reg_FF44_lineY)) continue;
+
+        int sprite_row = reg_FF44_lineY - y_pos;
+        if (flip_y) sprite_row = sprite_size - sprite_row;
+
+        //u8 data1 = mem_vram[tile_ref * 16 + sprite_row * 2];
+        //u8 data2 = mem_vram[tile_ref * 16 + sprite_row * 2 + 1];
 
         for (u8 pixel = 0; pixel < 8; pixel++)
         {
-            // for every pixel in the sprite we want ot figure out where it falls on the screen 
-            int screen_pos_x = sprite.x_coord + pixel - 8;
+            int screen_pos_x = x_pos + pixel;
 
-            // sprite off screen
             if ((screen_pos_x < 0) || (screen_pos_x > 159)) continue;
 
-            int pixel_shade = gpu_tileset[sprite.tile_ref][sprite_row][pixel]; // sprites only use this area :D
-
+            // check if pixel is hidden behind background
+            if (get_bit(attributes, 7) && (gpu_screen_data[reg_FF44_lineY * 160 + screen_pos_x] != WHITE)) continue;
+            uint32_t pixel_shade = gpu_tileset[tile_ref * 64 + sprite_row * 8 + (flip_x ? 7 - pixel : pixel)]; // sprites only use this area :D
             if (pixel_shade == 0) continue; // sprite is transparent
-
-            const int screen_offset = reg_FF44_lineY * 160 + screen_pos_x;
-
-            gpu_screen_data[screen_offset] = gpu_obj0_palette[pixel_shade];
-        }
-    }
-}
-
-
-
-
-void Emulator::gpu_generate_background_sprites()
-{
-    // render BG
-    const bool _tile_map = get_bit(reg_FF40_LCD_ctrl, 3);
-    for (int y = 0; y < 256; y++)
-    {
-        for (int x = 0; x < 256; x++)
-        {
-            // what tile are we in?
-            int tilex = x >> 3;
-            int tiley = y >> 3;
-            int tile_idx = tiley * 32 + tilex;
-
-            // get the tile reference out of the tile map we are currently in
-            u8 tile_ref = mem_vram[(_tile_map ? 0x1C00 : 0x1800) + tile_idx];
-
-            // get the pixel from the tile depending on which tile set we're in 
-            if (get_bit(reg_FF40_LCD_ctrl, 4) == 1)
-                gpu_background[y][x] = gpu_bg_palette[gpu_tileset[tile_ref][y & 0x7][x & 0x7]];
-            else
-                gpu_background[y][x] = gpu_bg_palette[gpu_tileset[256 + (int8_t)tile_ref][y & 0x7][x & 0x7]];
-        }
-    }
-
-    // render sprites 
-    gpu_generate_oam_entries();
-
-    for (int i = 0; i < 40; i++)
-    {
-        oam_entry sprite = gpu_oam_entries[i];
-
-        for (u8 row = 0; row < 8; row++)
-        {
-            for (u8 pixel = 0; pixel < 8; pixel++)
-            {
-                // for every pixel in the sprite we want ot figure out where it falls on the screen 
-                int screen_pos_x = sprite.x_coord + pixel - 8;
-                int screen_pos_y = sprite.y_coord + row - 16;
-
-                // sprite off screen
-                if ((screen_pos_x < 0) || (screen_pos_x > 255) || (screen_pos_y < 0) || (screen_pos_y > 255)) continue; 
-
-                int pixel_shade = gpu_tileset[sprite.tile_ref][row][pixel]; // sprites only use this area :D
-
-                if (pixel_shade == 0) continue; // sprite is transparent
-
-                //if ((gpu_background[screen_pos_y][screen_pos_x] != 0) && sprite.priority()) continue;
-
-                gpu_background[screen_pos_y][screen_pos_x] = gpu_obj0_palette[pixel_shade];
-            }
-        }
-    }
-}
-
-
-void Emulator::gpu_generate_tileset_view()
-{
-    for (int y = 0; y < 192; y++)
-    {
-        for (int x = 0; x < 128; x++)
-        {
-            // what tile are we in?
-            int tilex = x >> 3;
-            int tiley = y >> 3;
-            int tile_idx = tiley * 16 + tilex;
-
-            // get the pixel 
-            gpu_tileset_view[y * 128 + x] = gpu_bg_palette[gpu_tileset[tile_idx][y & 0x7][x & 0x7]];
+            uint32_t color = get_bit(attributes, 4) ? gpu_obj1_palette[pixel_shade] : gpu_obj0_palette[pixel_shade];
+            gpu_screen_data[reg_FF44_lineY * 160 + screen_pos_x] = color;
+            /*
+            u8 bit = 7 - pixel;
+            if (flip_x) bit = pixel;
+            u8 pre_color = (get_bit(data2, bit) << 1) | get_bit(data1, bit);
+            if (pre_color == 0) continue;
+            uint32_t color = get_bit(attributes, 4) ? gpu_obj1_palette[pre_color] : gpu_obj0_palette[pre_color];
+            gpu_screen_data[reg_FF44_lineY * 160 + screen_pos_x] = color;
+            */
         }
     }
 }
@@ -147,34 +115,27 @@ void Emulator::gpu_update_tileset_from_addr(uint16_t addr) // address is between
         int hi_bit = (row2 >> jj) & 0b1;
 
         int color = (hi_bit << 1) | lo_bit;
-        gpu_tileset[idx_in_tileset][row][j] = color;
+        gpu_tileset[idx_in_tileset * 64 + row * 8 + j] = color;
     }
 }
-void Emulator::gpu_generate_oam_entries() // this is only to preserve my sanity while developing the scan render 
+void Emulator::debug_generate_tileset_view()
 {
-    // iterate over the 40 entries of 4 bytes each starting at FE00
-    for (int i = 0; i < 40; i++)
+    for (int y = 0; y < 192; y++)
     {
-        gpu_oam_entries[i].y_coord = mem_oam[i * 4 + 0];
-        gpu_oam_entries[i].x_coord = mem_oam[i * 4 + 1];
-        gpu_oam_entries[i].tile_ref = mem_oam[i * 4 + 2];
-        gpu_oam_entries[i].data = mem_oam[i * 4 + 3];
+        for (int x = 0; x < 128; x++)
+        {
+            // what tile are we in?
+            int tilex = x >> 3;
+            int tiley = y >> 3;
+            int tile_idx = tiley * 16 + tilex;
+
+            // get the pixel 
+            gpu_tileset_view[y * 128 + x] = gpu_bg_palette[gpu_tileset[tile_idx * 64 + (y & 0x7) * 8 + (x & 0x7)]];
+        }
     }
 }
-void Emulator::gpu_update_oam_entries(uint16_t addr, u8 data) // assume addr is 00 - 9F
+void Emulator::debug_generate_background()
 {
-    int entry_idx = addr >> 2; // since stride is 4 bytes 
-    switch (addr & 0b11) // which of the 4 bytes do we need to modify?
-    {
-    case 0:gpu_oam_entries[entry_idx].y_coord = data; break;
-    case 1:gpu_oam_entries[entry_idx].x_coord = data; break;
-    case 2:gpu_oam_entries[entry_idx].tile_ref = data; break;
-    case 3:gpu_oam_entries[entry_idx].data = data; break;
-    }
-}
-void Emulator::gpu_generate_background() // which of 2 bg maps are we using?
-{
-    const bool _tile_map = get_bit(reg_FF40_LCD_ctrl, 3);
     for (int y = 0; y < 256; y++)
     {
         for (int x = 0; x < 256; x++)
@@ -185,13 +146,13 @@ void Emulator::gpu_generate_background() // which of 2 bg maps are we using?
             int tile_idx = tiley * 32 + tilex;
 
             // get the tile reference out of the tile map we are currently in
-            u8 tile_ref = mem_vram[(_tile_map ? 0x1C00 : 0x1800) + tile_idx];
+            u8 tile_ref = mem_vram[(get_bit(reg_FF40_LCD_ctrl, 3) ? 0x1C00 : 0x1800) + tile_idx];
 
             // get the pixel from the tile depending on which tile set we're in 
             if (get_bit(reg_FF40_LCD_ctrl, 4) == 1)
-                gpu_background[y][x] = gpu_bg_palette[gpu_tileset[tile_ref][y & 0x7][x & 0x7]];
+                gpu_background[y * 256 + x] = gpu_bg_palette[gpu_tileset[tile_ref * 64 + (y & 0x7) * 8 + (x & 0x7)]];
             else
-                gpu_background[y][x] = gpu_bg_palette[gpu_tileset[256 + (int8_t)tile_ref][y & 0x7][x & 0x7]];
+                gpu_background[y * 256 + x] = gpu_bg_palette[gpu_tileset[(256 + (int8_t)tile_ref) * 64 + (y & 0x7) * 8 + (x & 0x7)]];
         }
     }
 }
@@ -230,11 +191,11 @@ void Emulator::update_gpu(int _cyc) // returns true if it is time to vblank
             gpu_counter %= 204;
             reg_FF44_lineY++;
 
-            if (reg_FF44_lineY >= 143) // Enter vblank
+            if (reg_FF44_lineY > 143) // Enter vblank
             {
                 gpu_state = GPU_STATE::VBLANK;
-                reg_FF0F_interrupt_flag = set_bit(reg_FF0F_interrupt_flag, 0);
                 system_step_output == EMULATOR_OUTPUT::VBLANK;
+                reg_FF0F_interrupt_flag = set_bit(reg_FF0F_interrupt_flag, 0);
             }
             else gpu_state = GPU_STATE::SCANLINE_OAM; // continue in OAM mode for next scanline
         }
@@ -255,10 +216,4 @@ void Emulator::update_gpu(int _cyc) // returns true if it is time to vblank
         break;
     }
 }
-
-
-bool    oam_entry::priority() { return get_bit(data, 7); }
-bool    oam_entry::y_flip() { return get_bit(data, 6); }
-bool    oam_entry::x_flip() { return get_bit(data, 5); }
-bool    oam_entry::palette() { return get_bit(data, 4); }
 

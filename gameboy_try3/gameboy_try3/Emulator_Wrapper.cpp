@@ -3,15 +3,15 @@
 #include <string>
 
 static char brk_address_cpu[8] = "";
-static ImVec4 cyan = ImVec4(0.0f, 1.0f, 1.0f, 1.0f);
-static ImVec4 magenta = ImVec4(1.0f, 0.502f, 0.957f, 1.0f);
-static ImVec4 yellow = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
-static ImVec4 red = ImVec4(1.0f, 0.149f, 0.447f, 1.0f);
-static ImVec4 green = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-static ImVec4 white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-static ImVec4 gray = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-static ImVec4 dark_gray = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
-static ImVec4 soy = ImVec4(0.8f, 0.149f, 0.447f, 1.0f);
+static ImVec4 cyan             = ImVec4(0.0f, 1.0f, 1.0f, 1.0f);
+static ImVec4 magenta          = ImVec4(1.0f, 0.502f, 0.957f, 1.0f);
+static ImVec4 yellow           = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+static ImVec4 red              = ImVec4(1.0f, 0.149f, 0.447f, 1.0f);
+static ImVec4 green            = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+static ImVec4 white            = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+static ImVec4 gray             = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+static ImVec4 dark_gray        = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
+static ImVec4 soy              = ImVec4(0.8f, 0.149f, 0.447f, 1.0f);
 static MemoryEditor mem_edit;
 
 
@@ -139,7 +139,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 #pragma endregion
 
 
-Emulator_Wrapper::Emulator_Wrapper() : VBO(0), VAO(0), EBO(0), window(0), emu(0), texture()
+Emulator_Wrapper::Emulator_Wrapper() : VBO(0), VAO(0), EBO(0), window(0), emu(0), texture(), emu_wrap_state(EMULATOR_WRAPPER_STATE::ON)
 {
 #pragma region opengl stuff 
     // glfw & glew
@@ -216,16 +216,12 @@ Emulator_Wrapper::Emulator_Wrapper() : VBO(0), VAO(0), EBO(0), window(0), emu(0)
 
     /*
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Tetris (World) (Rev 1).gb");
-    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Pokemon Blue.gb");
 
-    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\mem_timing.gb");
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\cpu_instrs.gb");
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\instr_timing.gb");
+    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\mem_timing.gb");
     */
-    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\interrupt_time.gb");
-    
-
-    
+    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Pokemon Blue.gb");
     
     /*
     for (int i = 0; i < 20000; i++)
@@ -266,13 +262,16 @@ Emulator_Wrapper::Emulator_Wrapper() : VBO(0), VAO(0), EBO(0), window(0), emu(0)
 
     for (;;)
     {
+        switch (emu_wrap_state)
+        {
+        case EMULATOR_WRAPPER_STATE::ON: emu->run_frame(); break;
+        case EMULATOR_WRAPPER_STATE::STEPPING: emu->run_step(); break;
+        }
 
-        if (emulator_on) emu->run_frame();
-        if (emulator_stepping) emu->run_step();
         if (emu->system_step_output == EMULATOR_OUTPUT::BREAKPOINT) // catch the breakpoint and make it external so we can run again 
         {
             emu->system_step_output = EMULATOR_OUTPUT::NOTHING;
-            emulator_on = false;
+            emu_wrap_state = EMULATOR_WRAPPER_STATE::OFF;
         }
 
         // Start the Dear ImGui frame
@@ -468,7 +467,7 @@ void Emulator_Wrapper::render_imgui_vram_viewer()
         }
         if (ImGui::BeginTabItem("BG map"))
         {
-            emu->gpu_generate_background();
+            emu->debug_generate_background();
             glBindTexture(GL_TEXTURE_2D, texture[1]);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, emu->gpu_background);
 
@@ -478,7 +477,7 @@ void Emulator_Wrapper::render_imgui_vram_viewer()
         }
         if (ImGui::BeginTabItem("tileset"))
         {
-            emu->gpu_generate_tileset_view();
+            emu->debug_generate_tileset_view();
             glBindTexture(GL_TEXTURE_2D, texture[2]);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, emu->gpu_tileset_view);
 
@@ -646,8 +645,11 @@ void Emulator_Wrapper::key_callback(GLFWwindow* window, int key, int scancode, i
         case GLFW_KEY_DOWN: key_code = 3; break;
 
         case GLFW_KEY_L: emu->run_step(); break;
-        case GLFW_KEY_K: emulator_stepping = true; break;
-        case GLFW_KEY_J: emulator_on = !emulator_on; break;
+        case GLFW_KEY_K: emu_wrap_state = EMULATOR_WRAPPER_STATE::STEPPING; break;
+        case GLFW_KEY_J: 
+            if (emu_wrap_state == EMULATOR_WRAPPER_STATE::OFF) emu_wrap_state = EMULATOR_WRAPPER_STATE::ON;
+            else if (emu_wrap_state == EMULATOR_WRAPPER_STATE::ON) emu_wrap_state = EMULATOR_WRAPPER_STATE::OFF;
+            break;
         case GLFW_KEY_ESCAPE: exit(69); break;
         }
         if (key_code != -1) emu->key_pressed(key_code);
@@ -666,7 +668,7 @@ void Emulator_Wrapper::key_callback(GLFWwindow* window, int key, int scancode, i
         case GLFW_KEY_UP: key_code = 2; break;
         case GLFW_KEY_DOWN: key_code = 3; break;
 
-        case GLFW_KEY_K: emulator_stepping = false; break;
+        case GLFW_KEY_K: emu_wrap_state = EMULATOR_WRAPPER_STATE::OFF; break;
         }
         if (key_code != -1) emu->key_released(key_code);
     }

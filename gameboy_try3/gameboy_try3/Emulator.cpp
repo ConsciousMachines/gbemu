@@ -3,7 +3,7 @@
 
 void Emulator::run_step()
 {
-    bonus_cycles = 0;
+    system_bonus_cycles = 0;
 
     // fetch - 4 cycles 
     u8 opcode = next_byte_4t(); 
@@ -11,11 +11,12 @@ void Emulator::run_step()
     // execute - some # of cycles
     execute_opcode(opcode);
 
-    if (bonus_cycles > 0)
+    // non-memory cycles, usually moving around 16bit values
+    if (system_bonus_cycles > 0)
     {
-        cycles += bonus_cycles;
-        update_timers(bonus_cycles);
-        update_gpu(bonus_cycles);
+        system_total_cycles += system_bonus_cycles;
+        update_timers(system_bonus_cycles);
+        update_gpu(system_bonus_cycles);
     }
 
     update_interrupts();
@@ -23,9 +24,8 @@ void Emulator::run_step()
 
 void Emulator::run_frame()
 {
-    //while (cycles > 70222) cycles -= 70222;
-    cycles %= 70222;
-    while ((cycles < 70222))// && (system_step_output == EMULATOR_OUTPUT::NOTHING))
+    system_total_cycles %= 70222;
+    while ((system_total_cycles < 70222) && (system_step_output == EMULATOR_OUTPUT::NOTHING))
     {
         run_step();
     }
@@ -181,7 +181,7 @@ u8 Emulator::rb(uint16_t addr, bool add_cycles)
 
     if (add_cycles)
     {
-        cycles += 4;
+        system_total_cycles += 4;
         update_timers(4);
         update_gpu(4);
     }
@@ -351,12 +351,7 @@ void Emulator::wb(uint16_t addr, u8 data, bool add_cycles)
         case 0x800: case 0x900: case 0xA00: case 0xB00:
         case 0xC00: case 0xD00: mem_wram[addr & 0x1FFF] = data; break; // Working RAM shadow
         case 0xE00: // Graphics: object attribute memory
-            if (addr < 0xFEA0)
-            {
-                mem_oam[addr & 0xFF] = data;
-                gpu_update_oam_entries(addr & 0xFF, data); // address always 0xFE..
-                break;
-            }
+            if (addr < 0xFEA0) mem_oam[addr & 0xFF] = data; break;
             break;
         case 0xF00:
             if (addr <= 0xFF7F) // I/O registers
@@ -388,10 +383,7 @@ void Emulator::wb(uint16_t addr, u8 data, bool add_cycles)
                 case 0xFF46: // DMA
                 {
                     u16 address = data << 8; // source address is data * 100
-                    for (u16 i = 0; i < 0xA0; i++)
-                    {
-                        mem_oam[i] = rb(address + i, false);
-                    }
+                    for (u16 i = 0; i < 0xA0; i++) mem_oam[i] = rb(address + i, false);
                     break;
                 }
                 case 0xFF47: // background palette
@@ -446,7 +438,7 @@ void Emulator::wb(uint16_t addr, u8 data, bool add_cycles)
 
     if (add_cycles)
     {
-        cycles += 4;
+        system_total_cycles += 4;
         update_timers(4);
         update_gpu(4);
     }
@@ -455,25 +447,20 @@ void Emulator::wb(uint16_t addr, u8 data, bool add_cycles)
 Emulator::Emulator(const char* romName)
 {
     // init memory 
-    memset(gpu_oam_entries, 0, 40 * sizeof(oam_entry));
-    memset(gpu_tileset, 0, 384 * sizeof(pixels));
-    memset(gpu_background, 0, 256 * sizeof(row));
-    memset(gpu_screen_data, 0, 144 * 160 * sizeof(uint32_t));
-    memset(mem_cart, 0, 0x200000);
-    memset(mem_vram, 0, 0x2000);
-    memset(mem_wram, 0, 0x2000);
-    memset(mem_oam, 0, 160);
-    memset(mem_hram, 0, 128);
-
-    reg_FF0F_interrupt_flag = 0x11;
+    memset(gpu_tileset_view, 0, 384 * 8 * 8 * sizeof(uint32_t));
+    memset(gpu_tileset     , 0, 384 * 8 * 8 * sizeof(uint32_t));
+    memset(gpu_background  , 0, 256 * 256 * sizeof(uint32_t));
+    memset(gpu_screen_data , 0, 144 * 160 * sizeof(uint32_t));
+    memset(mem_cart        , 0, 0x200000);
+    memset(mem_vram        , 0, 0x2000);
+    memset(mem_wram        , 0, 0x2000);
+    memset(mem_oam         , 0, 160);
+    memset(mem_hram        , 0, 128);
 
     // load rom 
     FILE* in = fopen(romName, "rb"); // TODO: replace 1 array with banked array
     fread(mem_cart, 1, 0x200000, in);
     fclose(in);
-
-    // copy bios 
-    //memcpy(&_game_cartridge[0], &_bios[0], 256);
 
     // init values in memory 
     /*
@@ -482,8 +469,6 @@ Emulator::Emulator(const char* romName)
     de(0x00D8);
     hl(0x014D);
     flags.psw = 0xB0;
-    pc = 0x100;
-    sp = 0xFFFE;
     */
     a(0x11);
     bc(0x0000);
@@ -507,7 +492,6 @@ Emulator::Emulator(const char* romName)
     case 0x11:
     case 0x12:
     case 0x13: system_which_MBC = 3; break;
-
     }
 
 
@@ -534,7 +518,6 @@ Emulator::Emulator(const char* romName)
     case 0x03: system_total_eram_banks = 4; break;
     case 0x04: system_total_eram_banks = 16; break;
     case 0x05: system_total_eram_banks = 8; break;
-    default: system_total_eram_banks = 1; break; // 2 b safe
     }
     // create ram banks
     mem_eram = new u8*[system_total_eram_banks];
@@ -543,7 +526,7 @@ Emulator::Emulator(const char* romName)
 
 
     // open file for debug
-    fp = fopen("C:\\Users\\pwnag\\Desktop\\my_emu.txt", "w+");
+    //fp = fopen("C:\\Users\\pwnag\\Desktop\\my_emu.txt", "w+");
 }
 
 void Emulator::key_pressed(int key) {if (key < 8) system_input_keys = reset_bit(system_input_keys, key); }

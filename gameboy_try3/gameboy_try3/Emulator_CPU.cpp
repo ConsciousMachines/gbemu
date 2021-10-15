@@ -140,7 +140,7 @@ void Emulator::LD_pair_Im(int pair)
 void Emulator::LD_SP_HL()
 {
     sp = hl();
-    bonus_cycles += 4;
+    system_bonus_cycles += 4;
     //system_cycles += 8;
 }
 void Emulator::LDHL_SP_n()
@@ -152,7 +152,7 @@ void Emulator::LDHL_SP_n()
     flags.cc.n = 0;
     flags.cc.h = ((sp & 0x0F) + (n & 0x0F)) > 0x0F; // https://github.com/rtfpessoa/dmgboy/blob/master/src/Instructions.cpp
     flags.cc.c = ((sp & 0xFF) + (n & 0xFF)) > 0xFF;
-    bonus_cycles += 4;
+    system_bonus_cycles += 4;
     //system_cycles += 12;
 }
 void Emulator::LD_nn_SP()
@@ -171,7 +171,7 @@ void Emulator::PUSH(int pair)
     case 2: push_word_8t(de()); break;
     case 3: push_word_8t(hl()); break;
     }
-    bonus_cycles += 4;
+    system_bonus_cycles += 4;
     //system_cycles += 16;
 }
 void Emulator::POP(int pair)
@@ -452,7 +452,7 @@ void Emulator::ADD_HL(int reg)
     flags.cc.h = (((hl() & 0x0FFF) + (addend & 0x0FFF)) > 0x0FFF) ? 1 : 0; // from DMGBoy
     flags.cc.c = ((hl() + addend) > 0xFFFF) ? 1 : 0; 
     hl(hl() + addend);
-    bonus_cycles += 4;
+    system_bonus_cycles += 4;
     //system_cycles += 8;
 }
 void Emulator::ADD_SP()
@@ -463,7 +463,7 @@ void Emulator::ADD_SP()
     flags.cc.h = ((sp & 0x0F) + (n & 0x0F)) > 0x0F; // DMGBoy
     flags.cc.c = ((sp & 0xFF) + (n & 0xFF)) > 0xFF; 
     sp += n;
-    bonus_cycles += 8;
+    system_bonus_cycles += 8;
     //system_cycles += 16;
 }
 void Emulator::INC_16(int reg)
@@ -475,7 +475,7 @@ void Emulator::INC_16(int reg)
     case 3: hl(hl() + 1); break;
     case 4: sp++;        break;
     }
-    bonus_cycles += 4;
+    system_bonus_cycles += 4;
     //system_cycles += 8;
 }
 void Emulator::DEC_16(int reg)
@@ -487,7 +487,7 @@ void Emulator::DEC_16(int reg)
     case 3: hl(hl() - 1); break;
     case 4: sp--;         break;
     }
-    bonus_cycles += 4;
+    system_bonus_cycles += 4;
     //system_cycles += 8;
 }
 
@@ -607,7 +607,7 @@ void Emulator::JP(bool condition)
     if (condition)
     {
         pc = addr;
-        bonus_cycles += 4;
+        system_bonus_cycles += 4;
         //system_cycles += 16;
     }
     //else //system_cycles += 12;
@@ -623,7 +623,7 @@ void Emulator::JR(bool condition)
     if (condition)
     {
         pc += offset;
-        bonus_cycles += 4;
+        system_bonus_cycles += 4;
         //system_cycles += 12;
     }
     //else //system_cycles += 8;
@@ -635,7 +635,7 @@ void Emulator::CALL(bool condition)
     {
         push_word_8t(pc);
         pc = addr;
-        bonus_cycles += 4;
+        system_bonus_cycles += 4;
         //system_cycles += 24;
     }
     //else //system_cycles += 12;
@@ -644,13 +644,13 @@ void Emulator::RST(uint16_t addr)
 {
     push_word_8t(pc);
     pc = addr;
-    bonus_cycles += 4;
+    system_bonus_cycles += 4;
     //system_cycles += 16;
 }
 void Emulator::RET()
 {
     pc = pop_word_8t();
-    bonus_cycles += 4;
+    system_bonus_cycles += 4;
     //system_cycles += 16;
 }
 void Emulator::RET_cc(bool condition)
@@ -658,12 +658,12 @@ void Emulator::RET_cc(bool condition)
     if (condition)
     {
         pc = pop_word_8t();
-        bonus_cycles += 8;
+        system_bonus_cycles += 8;
         //system_cycles += 20;
     }
     else
     {
-        bonus_cycles += 4;
+        system_bonus_cycles += 4;
         //system_cycles += 8;
     }
 }
@@ -671,7 +671,7 @@ void Emulator::RETI()
 {
     pc = pop_word_8t();
     system_master_interrupt_en = true;
-    bonus_cycles += 4;
+    system_bonus_cycles += 4;
     //system_cycles += 16;
 }
 

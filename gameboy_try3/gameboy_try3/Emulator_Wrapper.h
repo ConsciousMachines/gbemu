@@ -31,6 +31,8 @@
   (byte & 0x02 ? '1' : '0'), \
   (byte & 0x01 ? '1' : '0') 
 
+enum class EMULATOR_WRAPPER_STATE { ON, OFF, STEPPING };
+
 
 class Emulator_Wrapper
 {
@@ -39,6 +41,7 @@ public:
     ~Emulator_Wrapper();
     void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 private:
+    EMULATOR_WRAPPER_STATE emu_wrap_state;
     void render_imgui_main_window();
     void render_imgui_memory_editor(MemoryEditor mem_edit);
     void render_imgui_vram_viewer();
@@ -49,6 +52,4 @@ private:
     unsigned int VBO, VAO, EBO;
     GLFWwindow* window;
     GLuint texture[NUM_TEXTURES];
-    bool emulator_on = true;
-    bool emulator_stepping = false;
 };

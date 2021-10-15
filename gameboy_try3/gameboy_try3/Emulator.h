@@ -19,19 +19,8 @@ typedef uint8_t u8;
 template <typename t> static t get_bit  (t data, int bit) { return (data >> bit) & 1; }
 template <typename t> static t set_bit  (t data, int bit) { return data | (1 << bit); }
 template <typename t> static t reset_bit(t data, int bit) { return data & ~(1 << bit); }
-typedef int pixels[8][8]; // 64 pixels to represent one "tile"
-typedef uint32_t row[256]; // one row of 256 pixels 
 enum class GPU_STATE { SCANLINE_OAM = 2, SCANLINE_VRAM = 3, HBLANK = 0, VBLANK = 1 };
 enum class EMULATOR_OUTPUT { NOTHING, VBLANK, BREAKPOINT };
-class oam_entry
-{
-public:
-    u8 y_coord, x_coord, tile_ref, data;
-    bool    priority();
-    bool    y_flip  ();
-    bool    x_flip  ();
-    bool    palette ();
-};
 
 
 class Emulator
@@ -195,13 +184,12 @@ public:
     bool            system_UsingMemoryModel16_8 = false;
     bool            system_master_interrupt_en  = true;
     int             system_timer_counter        = 0;
-    //int             system_cycles               = 0;
-    int cycles = 0;
-    int bonus_cycles = 0;
+    int             system_total_cycles         = 0;
+    int             system_bonus_cycles         = 0;
     EMULATOR_OUTPUT system_step_output          = EMULATOR_OUTPUT::NOTHING;
 
 
-    FILE* fp;
+    //FILE* fp;
     //u16 m_RetraceLY = 456;
     std::vector<u16> debug_mem_breakpoints_w = std::vector<u16>();
     std::vector<u16> debug_mem_breakpoints_r = std::vector<u16>();
@@ -230,20 +218,16 @@ public:
 
 
     // gpu
-    GPU_STATE  gpu_state;
-    oam_entry* gpu_oam_entries  = new oam_entry[40];
-    pixels*    gpu_tileset      = new pixels[384]; // list of 384 "tiles" where each tile is an int[8][8] 
-    row*       gpu_background   = new row[256]; // each pixel is a color, 0 = White, 1 = Light, 2 = Dark, 3 = Black
-    uint32_t*  gpu_tileset_view = new uint32_t[384 * 8 * 8]; // display the tile set 
-    uint32_t*  gpu_screen_data  = new uint32_t[144 * 160];
-    uint32_t   gpu_bg_palette[4];
-    uint32_t   gpu_obj0_palette[4];
-    uint32_t   gpu_obj1_palette[4];
+    GPU_STATE    gpu_state;
+    uint32_t*    gpu_tileset      = new uint32_t[384 * 8 * 8]; // 384 tiles flattened into an array
+    uint32_t*    gpu_tileset_view = new uint32_t[384 * 8 * 8]; // display the tiles for openGL
+    uint32_t*    gpu_screen_data  = new uint32_t[144 * 160];
+    uint32_t*    gpu_background   = new uint32_t[256 * 256]; // each pixel is a color, 0 = White, 1 = Light, 2 = Dark, 3 = Black
+    uint32_t     gpu_bg_palette[4];
+    uint32_t     gpu_obj0_palette[4];
+    uint32_t     gpu_obj1_palette[4];
     void gpu_render_scanline();
-    void gpu_update_oam_entries(uint16_t addr, u8 data);
     void gpu_update_tileset_from_addr(uint16_t addr);
-    void gpu_generate_oam_entries();
-    void gpu_generate_tileset_view();
-    void gpu_generate_background();
-    void gpu_generate_background_sprites();
+    void debug_generate_tileset_view();
+    void debug_generate_background();
 };
