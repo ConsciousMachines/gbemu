@@ -15,6 +15,11 @@
 // oct 12 - fixed stupid bug now blargg test shows! 
 // oct 14 - tetris plays and pokeman loads!
 // oct 15 - passed instr_timing thanks to https://www.reddit.com/r/EmuDev/comments/7emvy6/game_boy_blarggs_instruction_timing_test_fails/
+// oct 15 - passed mem_timing 1,2 - first fixed missing breaks in rb/wb, then added missing instruction cycles in cpu in order to pass
+//              instr_timing using new model where increment happens AT END of rb/wb. also interrupts happen after op completes!
+//              https://www.reddit.com/r/EmuDev/comments/e2grlv/struggling_to_pass_blarggs_mem_timing_rom/
+//              https://www.reddit.com/r/EmuDev/comments/pnruwk/gbgbc_passing_all_cputiming_tests/
+
 
 // remember to include opengl32.lib in the project, even in 64bit (lol)!!!
 #include "Emulator_Wrapper.h"

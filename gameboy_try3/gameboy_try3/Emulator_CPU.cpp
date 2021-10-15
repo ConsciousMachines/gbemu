@@ -12,121 +12,121 @@ void Emulator::print_state() const
         flags.cc.c == 1 ? 'x' : '.', flags.cc.h == 1 ? 'x' : '.', flags.cc.n == 1 ? 'x' : '.', flags.cc.z == 1 ? 'x' : '.',
         regs[0], regs[1], regs[2], regs[3], regs[4], regs[5], regs[6], sp, pc);
 }
-void Emulator::push_byte(u8 b1)
+void Emulator::push_byte_4t(u8 b1)
 {
     sp--;
-    wb(sp, b1);
+    wb(sp, b1, true);
 }
-u8 Emulator::pop_byte()
+u8 Emulator::pop_byte_4t()
 {
-    u8 ret = rb(sp);
+    u8 ret = rb(sp, true);
     sp++;
     return ret;
 }
-void Emulator::push_word(uint16_t w1, bool MSB_highest)
+void Emulator::push_word_8t(uint16_t w1, bool MSB_highest)
 {
     if (MSB_highest)
     {
-        push_byte(w1 >> 8);
-        push_byte(((u8)w1));
+        push_byte_4t(w1 >> 8);
+        push_byte_4t(((u8)w1));
     }
     else
     {
-        push_byte(((u8)w1));
-        push_byte(w1 >> 8);
+        push_byte_4t(((u8)w1));
+        push_byte_4t(w1 >> 8);
     }
 }
-uint16_t Emulator::pop_word(bool MSB_highest)
+uint16_t Emulator::pop_word_8t(bool MSB_highest)
 {
-    u8 b1 = pop_byte();
-    u8 b2 = pop_byte();
+    u8 b1 = pop_byte_4t();
+    u8 b2 = pop_byte_4t();
     if (MSB_highest) return (((uint16_t)b2) << 8) | ((uint16_t)b1);
     else return (((uint16_t)b1) << 8) | ((uint16_t)b2);
 }
-u8 Emulator::next_byte()
+u8 Emulator::next_byte_4t()
 {
-    u8 ret = rb(pc);
+    u8 ret = rb(pc, true);
     pc++;
     return ret;
 }
-uint16_t Emulator::next_word(bool LSB_first)
+uint16_t Emulator::next_word_8t(bool LSB_first)
 {
-    u8 b1 = next_byte();
-    u8 b2 = next_byte();
+    u8 b1 = next_byte_4t();
+    u8 b2 = next_byte_4t();
     if (LSB_first) return (((uint16_t)b2) << 8) | ((uint16_t)b1);
     else return (((uint16_t)b1) << 8) | ((uint16_t)b2);
 }
 void Emulator::LD_r_Im(int reg)
 {
-    u8 immediate = next_byte();
+    u8 immediate = next_byte_4t();
     regs[reg] = immediate;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::LD_r_r(int reg1, int reg2)
 {
     regs[reg1] = regs[reg2];
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::LD_r_pair(int reg, int pair, bool decHL, bool incHL)
 {
     u8 value = 0;
     switch (pair)
     {
-    case 0: value = rb(af()); break;
-    case 1: value = rb(bc()); break;
-    case 2: value = rb(de()); break;
+    case 0: value = rb(af(), true); break;
+    case 1: value = rb(bc(), true); break;
+    case 2: value = rb(de(), true); break;
     case 3:
-        value = rb(hl());
+        value = rb(hl(), true);
         if (decHL) hl(hl() - 1);
         if (incHL) hl(hl() + 1);
         break;
     }
     regs[reg] = value;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::LD_pair_r(int pair, int reg, bool decHL, bool incHL)
 {
     switch (pair)
     {
-    case 0: wb(af(), regs[reg]); break;
-    case 1: wb(bc(), regs[reg]); break;
-    case 2: wb(de(), regs[reg]); break;
+    case 0: wb(af(), regs[reg], true); break;
+    case 1: wb(bc(), regs[reg], true); break;
+    case 2: wb(de(), regs[reg], true); break;
     case 3:
-        wb(hl(), regs[reg]);
+        wb(hl(), regs[reg], true);
         if (decHL) hl(hl() - 1);
         if (incHL) hl(hl() + 1);
         break;
     }
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::LD_HL_Im()
 {
-    wb(hl(), next_byte());
-    system_cycles += 12;
+    wb(hl(), next_byte_4t(), true);
+    //system_cycles += 12;
 }
 void Emulator::LD_A_nn(bool flip)
 {
-    uint16_t addr = next_word();
-    if (flip) wb(addr, regs[0]);
-    else regs[0] = rb(addr);
-    system_cycles += 16;
+    uint16_t addr = next_word_8t();
+    if (flip) wb(addr, regs[0], true);
+    else regs[0] = rb(addr, true);
+    //system_cycles += 16;
 }
 void Emulator::LD_A_C(bool flip)
 {
-    if (flip) wb(0xff00 + c(), a());
-    else regs[0] = rb(0xff00 + c());
-    system_cycles += 8;
+    if (flip) wb(0xff00 + c(), a(), true);
+    else regs[0] = rb(0xff00 + c(), true);
+    //system_cycles += 8;
 }
 void Emulator::LDH_A_n(bool flip)
 {
-    u8 n = next_byte();
-    if (flip) wb(0xff00 + n, a());
-    else a(rb(0xff00 + n));
-    system_cycles += 12;
+    u8 n = next_byte_4t();
+    if (flip) wb(0xff00 + n, a(), true);
+    else a(rb(0xff00 + n, true));
+    //system_cycles += 12;
 }
 void Emulator::LD_pair_Im(int pair)
 {
-    uint16_t word = next_word();
+    uint16_t word = next_word_8t();
     switch (pair)
     {
     case 0: af(word); break;
@@ -135,52 +135,55 @@ void Emulator::LD_pair_Im(int pair)
     case 3: hl(word); break;
     case 4: sp = word; break;
     }
-    system_cycles += 12;
+    //system_cycles += 12;
 }
 void Emulator::LD_SP_HL()
 {
     sp = hl();
-    system_cycles += 8;
+    bonus_cycles += 4;
+    //system_cycles += 8;
 }
 void Emulator::LDHL_SP_n()
 {
-    u8 _n = next_byte(); // is this even being properly converted from signed to unsigned?
+    u8 _n = next_byte_4t(); // is this even being properly converted from signed to unsigned?
     int8_t n = (_n > 127) ? ((int)_n - 256) : _n; //https://stackoverflow.com/questions/7373852/interpret-unsigned-as-signed
     hl(sp + n);
     flags.cc.z = 0;
     flags.cc.n = 0;
     flags.cc.h = ((sp & 0x0F) + (n & 0x0F)) > 0x0F; // https://github.com/rtfpessoa/dmgboy/blob/master/src/Instructions.cpp
     flags.cc.c = ((sp & 0xFF) + (n & 0xFF)) > 0xFF;
-    system_cycles += 12;
+    bonus_cycles += 4;
+    //system_cycles += 12;
 }
 void Emulator::LD_nn_SP()
 {
-    uint16_t addr = next_word();
-    wb(addr, sp);
-    wb(addr + 1, sp >> 8); 
-    system_cycles += 20;
+    uint16_t addr = next_word_8t();
+    wb(addr, sp, true);
+    wb(addr + 1, sp >> 8, true); 
+    //system_cycles += 20;
 }
 void Emulator::PUSH(int pair)
 {
     switch (pair)
     {
-    case 0: push_word(af()); break;
-    case 1: push_word(bc()); break;
-    case 2: push_word(de()); break;
-    case 3: push_word(hl()); break;
+    case 0: push_word_8t(af()); break;
+    case 1: push_word_8t(bc()); break;
+    case 2: push_word_8t(de()); break;
+    case 3: push_word_8t(hl()); break;
     }
-    system_cycles += 16;
+    bonus_cycles += 4;
+    //system_cycles += 16;
 }
 void Emulator::POP(int pair)
 {
     switch (pair)
     {
-    case 0: af(pop_word()); break;
-    case 1: bc(pop_word()); break;
-    case 2: de(pop_word()); break;
-    case 3: hl(pop_word()); break;
+    case 0: af(pop_word_8t()); break;
+    case 1: bc(pop_word_8t()); break;
+    case 2: de(pop_word_8t()); break;
+    case 3: hl(pop_word_8t()); break;
     }
-    system_cycles += 12;
+    //system_cycles += 12;
 }
 
 void Emulator::ADD_r(int reg, bool ADC)
@@ -194,11 +197,11 @@ void Emulator::ADD_r(int reg, bool ADC)
     flags.cc.c = full > 0xff ? 1 : 0;
     flags.cc.h = half > 0x0f ? 1 : 0;
     regs[0] = answer;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::ADD_HL(bool ADC)
 {
-    u8 addend = rb(hl()); 
+    u8 addend = rb(hl(), true); 
     uint16_t full = ((uint16_t)regs[0]) + ((uint16_t)addend) + ADC * flags.cc.c;
     u8 half = (regs[0] & 0x0f) + (addend & 0x0f) + ADC * flags.cc.c;
     u8 answer = ((u8)full);
@@ -207,11 +210,11 @@ void Emulator::ADD_HL(bool ADC)
     flags.cc.c = full > 0xff ? 1 : 0;
     flags.cc.h = half > 0x0f ? 1 : 0;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::ADD_im(bool ADC)
 {
-    u8 addend = next_byte(); 
+    u8 addend = next_byte_4t(); 
     uint16_t full = ((uint16_t)regs[0]) + ((uint16_t)addend) + ADC * flags.cc.c;
     u8 half = (regs[0] & 0x0f) + (addend & 0x0f) + ADC * flags.cc.c;
     u8 answer = ((u8)full);
@@ -220,18 +223,18 @@ void Emulator::ADD_im(bool ADC)
     flags.cc.c = full > 0xff ? 1 : 0;
     flags.cc.h = half > 0x0f ? 1 : 0;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::CP_HL() 
 {
-    u8 addend = rb(hl()); 
+    u8 addend = rb(hl(), true); 
     uint16_t full = ((uint16_t)regs[0]) - ((uint16_t)addend);
     u8 answer = ((u8)full);
     flags.cc.z = answer == 0 ? 1 : 0;
     flags.cc.n = 1;
     flags.cc.h = (regs[0] & 0x0f) < (addend & 0x0f);
     flags.cc.c = regs[0] < addend ? 1 : 0;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::CP_r(int reg)
 {
@@ -242,18 +245,18 @@ void Emulator::CP_r(int reg)
     flags.cc.n = 1;
     flags.cc.h = (regs[0] & 0x0f) < (addend & 0x0f);
     flags.cc.c = regs[0] < addend ? 1 : 0;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::CP_im()
 {
-    u8 addend = next_byte(); 
+    u8 addend = next_byte_4t(); 
     uint16_t full = ((uint16_t)regs[0]) - ((uint16_t)addend);
     u8 answer = ((u8)full);
     flags.cc.z = answer == 0 ? 1 : 0;
     flags.cc.n = 1;
     flags.cc.h = (regs[0] & 0x0f) < (addend & 0x0f);
     flags.cc.c = regs[0] < addend ? 1 : 0;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::SUB_r(int reg, bool SBC)
 {
@@ -265,11 +268,11 @@ void Emulator::SUB_r(int reg, bool SBC)
     flags.cc.h = (regs[0] & 0x0f) < ((addend & 0x0f) + SBC*flags.cc.c) ? 1 : 0;
     flags.cc.c = regs[0] < (addend + SBC*flags.cc.c) ? 1 : 0;
     regs[0] = answer;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::SUB_HL(bool SBC)
 {
-    u8 addend = rb(hl()); 
+    u8 addend = rb(hl(), true); 
     uint16_t full = ((uint16_t)regs[0]) - ((uint16_t)addend) - SBC * (flags.cc.c ? 1 : 0);
     u8 answer = ((u8)full);
     flags.cc.z = answer == 0 ? 1 : 0;
@@ -277,11 +280,11 @@ void Emulator::SUB_HL(bool SBC)
     flags.cc.h = (regs[0] & 0x0f) < ((addend & 0x0f) + SBC * flags.cc.c) ? 1 : 0;
     flags.cc.c = regs[0] < (addend + SBC * flags.cc.c) ? 1 : 0;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::SUB_im(bool SBC)
 {
-    u8 addend = next_byte(); 
+    u8 addend = next_byte_4t(); 
     uint16_t full = ((uint16_t)regs[0]) - ((uint16_t)addend) - SBC * (flags.cc.c ? 1 : 0);
     u8 answer = ((u8)full);
     flags.cc.z = answer == 0 ? 1 : 0;
@@ -289,7 +292,7 @@ void Emulator::SUB_im(bool SBC)
     flags.cc.h = (regs[0] & 0x0f) < ((addend & 0x0f) + SBC * flags.cc.c) ? 1 : 0;
     flags.cc.c = regs[0] < (addend + SBC * flags.cc.c) ? 1 : 0;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::AND_r(int reg)
 {
@@ -300,29 +303,29 @@ void Emulator::AND_r(int reg)
     flags.cc.c = 0;
     flags.cc.h = 1;
     regs[0] = answer;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::AND_HL()
 {
-    u8 addend = rb(hl()); 
+    u8 addend = rb(hl(), true); 
     u8 answer = regs[0] & addend;
     flags.cc.z = answer == 0 ? 1 : 0;
     flags.cc.n = 0;
     flags.cc.c = 0;
     flags.cc.h = 1;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::AND_im()
 {
-    u8 addend = next_byte(); 
+    u8 addend = next_byte_4t(); 
     u8 answer = regs[0] & addend;
     flags.cc.z = answer == 0 ? 1 : 0;
     flags.cc.n = 0;
     flags.cc.c = 0;
     flags.cc.h = 1;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::OR_r(int reg)
 {
@@ -333,29 +336,29 @@ void Emulator::OR_r(int reg)
     flags.cc.c = 0;
     flags.cc.h = 0;
     regs[0] = answer;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::OR_im()
 {
-    u8 addend = next_byte(); 
+    u8 addend = next_byte_4t(); 
     u8 answer = regs[0] | addend;
     flags.cc.z = answer == 0 ? 1 : 0;
     flags.cc.n = 0;
     flags.cc.c = 0;
     flags.cc.h = 0;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::OR_HL()
 {
-    u8 addend = rb(hl()); 
+    u8 addend = rb(hl(), true); 
     u8 answer = regs[0] | addend;
     flags.cc.z = answer == 0 ? 1 : 0;
     flags.cc.n = 0;
     flags.cc.c = 0;
     flags.cc.h = 0;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::XOR_r(int reg)
 {
@@ -366,29 +369,29 @@ void Emulator::XOR_r(int reg)
     flags.cc.c = 0;
     flags.cc.h = 0;
     regs[0] = answer;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::XOR_im()
 {
-    u8 addend = next_byte(); 
+    u8 addend = next_byte_4t(); 
     u8 answer = regs[0] ^ addend;
     flags.cc.z = answer == 0 ? 1 : 0;
     flags.cc.n = 0;
     flags.cc.c = 0;
     flags.cc.h = 0;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::XOR_HL()
 {
-    u8 addend = rb(hl()); 
+    u8 addend = rb(hl(), true); 
     u8 answer = regs[0] ^ addend;
     flags.cc.z = answer == 0 ? 1 : 0;
     flags.cc.n = 0;
     flags.cc.c = 0;
     flags.cc.h = 0;
     regs[0] = answer;
-    system_cycles += 8;
+    //system_cycles += 8;
 }
 void Emulator::INC_r(int reg)
 {
@@ -400,19 +403,19 @@ void Emulator::INC_r(int reg)
     flags.cc.n = 0;
     flags.cc.h = (old_bit3 == 0x08) && (new_bit3 == 0x00);
     regs[reg] = value;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::INC_HL()
 {
-    u8 value = rb(hl());
+    u8 value = rb(hl(), true);
     u8 old_bit3 = value & 0x08;
     value++;
     u8 new_bit3 = value & 0x08;
     flags.cc.z = value == 0 ? 1 : 0;
     flags.cc.n = 0;
     flags.cc.h = (old_bit3 == 0x08) && (new_bit3 == 0x00);
-    wb(hl(), value);
-    system_cycles += 12;
+    wb(hl(), value, true);
+    //system_cycles += 12;
 }
 void Emulator::DEC_r(int reg)
 {
@@ -422,17 +425,17 @@ void Emulator::DEC_r(int reg)
     flags.cc.z = value == 0 ? 1 : 0;
     flags.cc.n = 1;
     regs[reg] = value;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::DEC_HL()
 {
-    u8 value = rb(hl());
+    u8 value = rb(hl(), true);
     flags.cc.h = ((value & 0x0f) == 0);
     value--;
     flags.cc.z = value == 0 ? 1 : 0;
     flags.cc.n = 1;
-    wb(hl(), value);
-    system_cycles += 12;
+    wb(hl(), value, true);
+    //system_cycles += 12;
 }
 void Emulator::ADD_HL(int reg)
 {
@@ -449,17 +452,19 @@ void Emulator::ADD_HL(int reg)
     flags.cc.h = (((hl() & 0x0FFF) + (addend & 0x0FFF)) > 0x0FFF) ? 1 : 0; // from DMGBoy
     flags.cc.c = ((hl() + addend) > 0xFFFF) ? 1 : 0; 
     hl(hl() + addend);
-    system_cycles += 8;
+    bonus_cycles += 4;
+    //system_cycles += 8;
 }
 void Emulator::ADD_SP()
 {
-    int8_t n = next_byte();
+    int8_t n = next_byte_4t();
     flags.cc.z = 0;
     flags.cc.n = 0;
     flags.cc.h = ((sp & 0x0F) + (n & 0x0F)) > 0x0F; // DMGBoy
     flags.cc.c = ((sp & 0xFF) + (n & 0xFF)) > 0xFF; 
     sp += n;
-    system_cycles += 16;
+    bonus_cycles += 8;
+    //system_cycles += 16;
 }
 void Emulator::INC_16(int reg)
 {
@@ -470,7 +475,8 @@ void Emulator::INC_16(int reg)
     case 3: hl(hl() + 1); break;
     case 4: sp++;        break;
     }
-    system_cycles += 8;
+    bonus_cycles += 4;
+    //system_cycles += 8;
 }
 void Emulator::DEC_16(int reg)
 {
@@ -481,7 +487,8 @@ void Emulator::DEC_16(int reg)
     case 3: hl(hl() - 1); break;
     case 4: sp--;         break;
     }
-    system_cycles += 8;
+    bonus_cycles += 4;
+    //system_cycles += 8;
 }
 
 void Emulator::DAA()
@@ -503,28 +510,28 @@ void Emulator::DAA()
     _a &= 0xFF;
     if (_a == 0) flags.cc.z = 1;
     a(_a);
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::CPL()
 {
     a(~a());
     flags.cc.n = 1;
     flags.cc.h = 1;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::CCF()
 {
     flags.cc.c = ~flags.cc.c;
     flags.cc.n = 0;
     flags.cc.h = 0;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::SCF()
 {
     flags.cc.c = 1;
     flags.cc.n = 0;
     flags.cc.h = 0;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::HALT()
 {
@@ -536,22 +543,22 @@ void Emulator::HALT()
         update_gpu(4);
         update_interrupts();
     }
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::STOP()
 {
     pc++;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::DI()
 {
     system_master_interrupt_en = false;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::EI()
 {
     system_master_interrupt_en = true;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::RLCA()
 {
@@ -562,7 +569,7 @@ void Emulator::RLCA()
     flags.cc.z = 0;
     flags.cc.n = 0;
     flags.cc.h = 0;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::RLA()
 {
@@ -572,7 +579,7 @@ void Emulator::RLA()
     flags.cc.z = 0;
     flags.cc.n = 0;
     flags.cc.h = 0;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::RRCA()
 {
@@ -582,7 +589,7 @@ void Emulator::RRCA()
     flags.cc.z = 0;
     flags.cc.n = 0;
     flags.cc.h = 0;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::RRA()
 {
@@ -592,74 +599,84 @@ void Emulator::RRA()
     flags.cc.z = 0;
     flags.cc.n = 0;
     flags.cc.h = 0;
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::JP(bool condition)
 {
-    uint16_t addr = next_word();
+    uint16_t addr = next_word_8t();
     if (condition)
     {
         pc = addr;
-        system_cycles += 16;
+        bonus_cycles += 4;
+        //system_cycles += 16;
     }
-    else system_cycles += 12;
+    //else //system_cycles += 12;
 }
 void Emulator::JP_HL()
 {
     pc = hl();
-    system_cycles += 4;
+    //system_cycles += 4;
 }
 void Emulator::JR(bool condition)
 {
-    int8_t offset = next_byte();
+    int8_t offset = next_byte_4t();
     if (condition)
     {
         pc += offset;
-        system_cycles += 12;
+        bonus_cycles += 4;
+        //system_cycles += 12;
     }
-    else system_cycles += 8;
+    //else //system_cycles += 8;
 }
 void Emulator::CALL(bool condition)
 {
-    uint16_t addr = next_word();
+    uint16_t addr = next_word_8t();
     if (condition)
     {
-        push_word(pc);
+        push_word_8t(pc);
         pc = addr;
-        system_cycles += 24;
+        bonus_cycles += 4;
+        //system_cycles += 24;
     }
-    else system_cycles += 12;
+    //else //system_cycles += 12;
 }
 void Emulator::RST(uint16_t addr)
 {
-    push_word(pc);
+    push_word_8t(pc);
     pc = addr;
-    system_cycles += 16;
+    bonus_cycles += 4;
+    //system_cycles += 16;
 }
 void Emulator::RET()
 {
-    pc = pop_word();
-    system_cycles += 16;
+    pc = pop_word_8t();
+    bonus_cycles += 4;
+    //system_cycles += 16;
 }
 void Emulator::RET_cc(bool condition)
 {
     if (condition)
     {
-        pc = pop_word();
-        system_cycles += 20;
+        pc = pop_word_8t();
+        bonus_cycles += 8;
+        //system_cycles += 20;
     }
-    else system_cycles += 8;
+    else
+    {
+        bonus_cycles += 4;
+        //system_cycles += 8;
+    }
 }
 void Emulator::RETI()
 {
-    pc = pop_word();
+    pc = pop_word_8t();
     system_master_interrupt_en = true;
-    system_cycles += 16;
+    bonus_cycles += 4;
+    //system_cycles += 16;
 }
 
-u8 Emulator::execute_opcode()
+void Emulator::execute_opcode(u8 opcode)
 {
-    u8 opcode = next_byte();
     switch (opcode)
     {
     case 0x46: LD_r_pair(1, 3); break;
@@ -905,8 +922,12 @@ u8 Emulator::execute_opcode()
     case 0xef: RST(0x28); break;
     case 0xf7: RST(0x30); break;
     case 0xff: RST(0x38); break;
-    case 0x00: system_cycles += 4; break; // NOP
-    case 0xcb: execute_extended_opcode(); break;
+    case 0x00: break; //system_cycles += 4; break; // NOP
+    case 0xcb: 
+    {
+        u8 opcode = next_byte_4t();
+        execute_extended_opcode(opcode); break;
+    }
     case 0xd3: UNIMPLEMENTED_INSTRUCTION(); break;
     case 0xdb: UNIMPLEMENTED_INSTRUCTION(); break;
     case 0xdd: UNIMPLEMENTED_INSTRUCTION(); break;
@@ -919,12 +940,11 @@ u8 Emulator::execute_opcode()
     case 0xfc: UNIMPLEMENTED_INSTRUCTION(); break;
     case 0xfd: UNIMPLEMENTED_INSTRUCTION(); break;
     }
-    return opcode;
 }
 void Emulator::cb_SWAP(int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     u8 lower_nib = value & 0x0f;
@@ -935,19 +955,19 @@ void Emulator::cb_SWAP(int reg, bool HL)
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
 void Emulator::cb_RLC(int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     u8 old_bit7 = (value >> 7) & 0x1;
@@ -959,19 +979,19 @@ void Emulator::cb_RLC(int reg, bool HL)
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
 void Emulator::cb_RL(int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     u8 old_bit7 = (value >> 7);
@@ -983,19 +1003,19 @@ void Emulator::cb_RL(int reg, bool HL)
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
 void Emulator::cb_RRC(int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     u8 old_bit0 = value & 0x1;
@@ -1007,19 +1027,19 @@ void Emulator::cb_RRC(int reg, bool HL)
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
 void Emulator::cb_RR(int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     u8 old_bit0 = value & 0x1;
@@ -1031,19 +1051,19 @@ void Emulator::cb_RR(int reg, bool HL)
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
 void Emulator::cb_SLA(int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     u8 old_bit7 = (value >> 7);
@@ -1055,19 +1075,19 @@ void Emulator::cb_SLA(int reg, bool HL)
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
 void Emulator::cb_SRA(int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     u8 old_bit0 = value & 0x1;
@@ -1080,19 +1100,19 @@ void Emulator::cb_SRA(int reg, bool HL)
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
 void Emulator::cb_SRL(int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     u8 old_bit0 = value & 0x1;
@@ -1104,13 +1124,13 @@ void Emulator::cb_SRL(int reg, bool HL)
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
 void Emulator::cb_BIT(int bit, int reg, bool HL)
@@ -1118,12 +1138,12 @@ void Emulator::cb_BIT(int bit, int reg, bool HL)
     u8 value;
     if (HL)
     {
-        system_cycles += 12;
-        value = rb(hl());
+        //system_cycles += 12;
+        value = rb(hl(), true);
     }
     else
     {
-        system_cycles += 8;
+        //system_cycles += 8;
         value = regs[reg];
     }
 
@@ -1136,44 +1156,43 @@ void Emulator::cb_BIT(int bit, int reg, bool HL)
 void Emulator::cb_RESET(int bit, int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     answer = value & ~(0x1 << bit);
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
 void Emulator::cb_SET(int bit, int reg, bool HL)
 {
     u8 value, answer;
-    if (HL) value = rb(hl());
+    if (HL) value = rb(hl(), true);
     else value = regs[reg];
 
     answer = value | (0x1 << bit);
 
     if (HL)
     {
-        wb(hl(), answer);
-        system_cycles += 16;
+        wb(hl(), answer, true);
+        //system_cycles += 16;
     }
     else
     {
         regs[reg] = answer;
-        system_cycles += 8;
+        //system_cycles += 8;
     }
 }
-void Emulator::execute_extended_opcode()
+void Emulator::execute_extended_opcode(u8 opcode)
 {
-    u8 opcode = next_byte();
     switch (opcode)
     {
     case 0x00: cb_RLC(1, false); break;

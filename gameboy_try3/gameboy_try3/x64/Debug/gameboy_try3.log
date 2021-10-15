@@ -1,16 +1,1 @@
-﻿  Emulator_Wrapper.cpp
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.h(3,1): warning C4005: 'GLEW_STATIC': macro redefinition
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp : message : see previous definition of 'GLEW_STATIC'
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.h(4,1): warning C4005: '_CRT_SECURE_NO_WARNINGS': macro redefinition
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp : message : see previous definition of '_CRT_SECURE_NO_WARNINGS'
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(52,40): warning C4101: 'e': unreferenced local variable
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(318,41): warning C4312: 'type cast': conversion from 'GLuint' to 'ImTextureID' of greater size
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(474,49): warning C4312: 'type cast': conversion from 'GLuint' to 'ImTextureID' of greater size
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(484,49): warning C4312: 'type cast': conversion from 'GLuint' to 'ImTextureID' of greater size
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(548,48): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(552,60): warning C4244: '=': conversion from 'unsigned long' to 'u16', possible loss of data
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(562,48): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(566,60): warning C4244: '=': conversion from 'unsigned long' to 'u16', possible loss of data
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(555,45): warning C4101: 'ia': unreferenced local variable
-C:\Users\pwnag\source\repos\gameboy_try3\gameboy_try3\Emulator_Wrapper.cpp(569,45): warning C4101: 'ia': unreferenced local variable
-  gameboy_try3.vcxproj -> C:\Users\pwnag\source\repos\gameboy_try3\x64\Debug\gameboy_try3.exe
+﻿

@@ -82,12 +82,12 @@ public:
 #pragma region CPU
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - C P U    Z O N E 
     void print_state() const;
-    void push_byte(u8 b1);
-    u8 pop_byte();
-    void push_word(uint16_t w1, bool MSB_highest = true);
-    uint16_t pop_word(bool MSB_highest = true);
-    u8 next_byte();
-    uint16_t next_word(bool LSB_first = true);
+    void push_byte_4t(u8 b1);
+    u8 pop_byte_4t();
+    void push_word_8t(uint16_t w1, bool MSB_highest = true);
+    uint16_t pop_word_8t(bool MSB_highest = true);
+    u8 next_byte_4t();
+    uint16_t next_word_8t(bool LSB_first = true);
     void LD_r_Im(int reg);
     void LD_r_r(int reg1, int reg2);
     void LD_r_pair(int reg, int pair, bool decHL = false, bool incHL = false);
@@ -148,7 +148,7 @@ public:
     void RET();
     void RET_cc(bool condition);
     void RETI();
-    u8 execute_opcode();
+    void execute_opcode(u8 opcode);
     void cb_SWAP(int reg, bool HL = false);
     void cb_RLC(int reg, bool HL = false);
     void cb_RL(int reg, bool HL = false);
@@ -160,7 +160,7 @@ public:
     void cb_BIT(int bit, int reg, bool HL = false);
     void cb_RESET(int bit, int reg, bool HL = false);
     void cb_SET(int bit, int reg, bool HL = false);
-    void execute_extended_opcode();
+    void execute_extended_opcode(u8);
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - E N D    C P U    Z O N E 
 #pragma endregion
     // memory map 
@@ -185,8 +185,8 @@ public:
     void key_pressed(int);
     void key_released(int);
     void timer_set_clock_freq();
-    void wb(uint16_t, u8);
-    u8   rb(uint16_t);
+    void wb(uint16_t, u8, bool);
+    u8   rb(uint16_t, bool);
     u8              system_which_MBC            = 0;
     u8              system_input_keys           = 0xFF; // 0 = right; 1 = left; 2 = up; 3 = down; 4 = a; 5 = b; 6 = sel; 7 = start 
     bool            system_enable_ram_banking   = false;
@@ -195,8 +195,11 @@ public:
     bool            system_UsingMemoryModel16_8 = false;
     bool            system_master_interrupt_en  = true;
     int             system_timer_counter        = 0;
-    int             system_cycles               = 0;
+    //int             system_cycles               = 0;
+    int cycles = 0;
+    int bonus_cycles = 0;
     EMULATOR_OUTPUT system_step_output          = EMULATOR_OUTPUT::NOTHING;
+
 
     FILE* fp;
     //u16 m_RetraceLY = 456;

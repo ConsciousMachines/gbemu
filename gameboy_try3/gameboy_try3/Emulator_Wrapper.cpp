@@ -218,13 +218,15 @@ Emulator_Wrapper::Emulator_Wrapper() : VBO(0), VAO(0), EBO(0), window(0), emu(0)
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Tetris (World) (Rev 1).gb");
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\Pokemon Blue.gb");
 
+    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\mem_timing.gb");
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\cpu_instrs.gb");
-    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\01-read_timing.gb");
-    */
     emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\instr_timing.gb");
-    
+    */
+    emu = new Emulator("C:\\Users\\pwnag\\Desktop\\retro\\my_GBC\\interrupt_time.gb");
     
 
+    
+    
     /*
     for (int i = 0; i < 20000; i++)
     {
@@ -595,7 +597,7 @@ void Emulator_Wrapper::render_imgui_disassembler()
     u16 dis_pc = emu->pc; // we need a second PC to step through a chunk of disassembly
     ImVec4 instr_clr; 
     u8 bytes[90]; // a buffer used to store result of rb() since memory isnt contiguous 
-    for (int i = 0; i < 90; i++) bytes[i] = emu->rb(dis_pc + i); // apparently instr can be read from memory outside cart :S
+    for (int i = 0; i < 90; i++) bytes[i] = emu->rb(dis_pc + i, false); // apparently instr can be read from memory outside cart :S
     dis_pc = 0; // since now the PC is relative to the smol buffer 
 
     for (int i = 0; i < 30; i++)
